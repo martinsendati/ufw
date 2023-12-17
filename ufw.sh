@@ -34,16 +34,71 @@ echo "[OK] Firewall habilitado"
 
 echo "[INCOMING] Denegando tráfico entrante"
 
+#Este comando se traduce como "denegar todo el tráfico entrante por default"
 	sudo ufw default deny incoming
 
 echo "Tráfico entrante bloqueado"
 
 echo "[ALLOW] Permitiendo tráfico saliente"
-	
+
+#Este comando se traduce como "permitir el egreso de tráfico por default"
  	sudo ufw default allow outgoing
 
 echo "Tráfico saliente permitido"
 
 
+
+### Implementa funciones que permitan al usuario agregar y eliminar reglas en UFW. ###
+
+agregar_regla() {
+	echo "Ingrese una regla en UFW: "
+	read regla
+	sudo ufw allow $regla
+	echo "Regla nueva en UFW: $regla"
+}	
+eliminar_regla() {
+	echo "Ingrese la regla a eliminar"
+	read regla
+	sudo ufw delete allow $regla	
+	echo "Regla eliminada en UFW: $regla"
+
+}
+
+# # # # # # # # # #                                                                                            # # # # # # # # # #
+# Lo que se hizo hasta el momento fue crear las funciones para crear y eliminar reglas de UFW                                    #
+# Estas funciones se invocaran dentro de un bucle while arraigadas a una serie de opciones, según lo que quiera hacer el usuario #
+# # # # # # # # # #                                                                                            # # # # # # # # # #
+
+
+
+
+
+# Con la condición while se puede generar un menú para decidir que opción se quiere realizar. 
+# Al meterse dentro del bucle, se elije la opción, que va a derivar en una función, que ejecutará el comando de permitir o denegar. La unica manera de salir del bucle es pidiendolo
+# con la opción 3
+
+while true; do
+	echo "¿Que desea hacer en UFW?"
+	echo "1. Agregar una regla"
+	echo "2. Eliminar una regla"
+	echo "3. Salir"
+	echo "Elija una opción: $opcion"
+	read opcion
+
+	case $opcion in
+		1)
+			agregar_regla
+			;;
+		2)	
+			eliminar_regla
+			;;
+		3)
+			echo "Hasta pronto!"
+			exit 0
+			;;
+		*)
+			echo "Opción no encontrada. Intentelo de nuevo."
+	esac
+done
 
 
