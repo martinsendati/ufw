@@ -50,54 +50,146 @@ echo "Tráfico saliente permitido"
 
 ### Implementa funciones que permitan al usuario agregar y eliminar reglas en UFW. ###
 
-agregar_regla() {
-	echo "Ingrese una regla en UFW: "
-	read regla
-	sudo ufw allow $regla
-	echo "Regla nueva en UFW: $regla"
-}	
-eliminar_regla() {
-	echo "Ingrese la regla a eliminar"
-	read regla
-	sudo ufw delete allow $regla	
-	echo "Regla eliminada en UFW: $regla"
+
+direccion_ip () {
+	echo "Ingrese la Dirección IP: $ip"
+        read ip
+	echo "Seleccione para que puerto: $puerto"
+        echo "Si no es asi presione 0"
+        read puerto
+        if [ ! $puerto == 0 ]; then
+           echo "Permitiendo direccion $ip para puerto $puerto"
+
+       	   sudo ufw allow from $ip to any port $puerto
+	
+	   echo "Dirección IP permitida"
+        else
+           echo "Permitiendo direccion $ip"
+         
+	   sudo ufw allow from $ip
+        fi
+}
+
+servicio () {
+	echo "Ingrese el nombre o numero de puerto del Servicio: $serv"
+        read serv
+        echo "Habilitando $serv"
+        sudo ufw allow $serv
+        echo "$serv habilitado!" 
+}
+
+puertos () {
+cat <<EOF
+  Introduzca el rango de puertos a habilitar:
+  Desde el puerto: $port
+EOF
+        read port
+	echo "Hasta el puerto: "$port2	
+        read port2
+cat <<EOF
+  Elija para que protocolo:"
+  echo "1. TCP"
+  echo "2. UDP"
+EOF
+	read proto
+
+	case $proto in
+
+		1) sudo ufw allow $port:$port2/tcp	
+	          
+		   echo "Puertos habilitaods para TCP"
+		   ;;
+
+  		2) sudo ufw allow $port:$port2/udp
+		   
+		   echo "Puertos habilitados para UDP"
+		   ;;
+	esac
+}       
+
+eliminar_regla () {
+	echo "  Elija la regla a eliminar:"
+	sudo ufw status numbered
+	echo "  Introducir regla: $regla"
+	read regla 
+
+	echo "  Eliminando regla $regla"
+	sudo ufw delete $regla
+
+	if [ $regla = true ]; then
+		echo "  Regla eliminada con exito!"
+	else
+
+	       echo   "  No se a encontrado la regla!"
+	fi
+
+
 
 }
 
-# # # # # # # # # #                                                                                            # # # # # # # # # #
-# Lo que se hizo hasta el momento fue crear las funciones para crear y eliminar reglas de UFW                                    #
-# Estas funciones se invocaran dentro de un bucle while arraigadas a una serie de opciones, según lo que quiera hacer el usuario #
-# # # # # # # # # #                                                                                            # # # # # # # # # #
+agregar_regla() {
+cat << EOF
+  ¿Que regla queres agregar?:
+  1. Dirección IP
+  2. Nombre o puerto del Servicio
+  3. Rango de puertos
+EOF
+	read opciones
+
+	case $opciones in
+		1) 
+			direccion_ip
+	                ;;
+		2)      
+			servicio
+			;;
+		3)
+			puertos
+			;;
+	esac
+}
+
+reglas_actuales() {
+ cat << EOF
+  Asi están las reglas actualmente
+
+EOF
+	sudo ufw status verbose
+}
 
 
-
-
-
-# Con la condición while se puede generar un menú para decidir que opción se quiere realizar. 
-# Al meterse dentro del bucle, se elije la opción, que va a derivar en una función, que ejecutará el comando de permitir o denegar. La unica manera de salir del bucle es pidiendolo
-# con la opción 3
 
 while true; do
-	echo "¿Que desea hacer en UFW?"
-	echo "1. Agregar una regla"
-	echo "2. Eliminar una regla"
-	echo "3. Salir"
-	echo "Elija una opción: $opcion"
+ cat << EOF
+	
+  Gestión de reglas
+	
+  1. Agregar regla
+  2. Eliminar regla
+  3. Reglas actuales
+  4. Salir
+EOF
 	read opcion
 
 	case $opcion in
-		1)
-			agregar_regla
-			;;
+	        1)
+		    agregar_regla
+		    ;;
 		2)	
-			eliminar_regla
-			;;
-		3)
-			echo "Hasta pronto!"
-			exit 0
-			;;
+		    eliminar_regla
+		    ;;
+
+		3)  reglas_actuales
+		    ;;
+
+		4)
+		    echo "Hasta pronto!"
+		    exit 0
+		    ;;
+	
 		*)
 			echo "Opción no encontrada. Intentelo de nuevo."
+			;;
 	esac
 done
 
