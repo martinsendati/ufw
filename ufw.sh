@@ -54,28 +54,50 @@ echo "Tráfico saliente permitido"
 direccion_ip () {
 	echo "Ingrese la Dirección IP: $ip"
         read ip
-	echo "Seleccione para que puerto: $puerto"
-        echo "Si no es asi presione 0"
-        read puerto
-        if [ ! $puerto == 0 ]; then
-           echo "Permitiendo direccion $ip para puerto $puerto"
+     
+	echo "Agregar puerto: Presione 0 en el caso de no elegir puerto" $port
+        read port
 
-       	   sudo ufw allow from $ip to any port $puerto
+	if [ ! $port == 0 ]; then
+           echo "Habilitando Dirección IP"
+
+       	   sudo ufw allow from $ip to any port $port  || sudo ufw allow from $ip
 	
-	   echo "Dirección IP permitida"
-        else
-           echo "Permitiendo direccion $ip"
-         
-	   sudo ufw allow from $ip
-        fi
+	   echo "Dirección IP habilitada"
+   else 
+           echo "La dirección IP: $ip no es valida"
+
+             sudo ufw allow from $ip to any port $port 2> errores.txt || sudo ufw allow from $ip 2> errores.txt 
+	     cat <<EOF
+Hubo un error en la dirección ip o en el puerto, intente nuevamente
+EOF
+	     
+	     echo "Se ha hecho registro del error en el archivo errores.txt"
+
+	   fi
+
 }
 
 servicio () {
 	echo "Ingrese el nombre o numero de puerto del Servicio: $serv"
         read serv
         echo "Habilitando $serv"
-        sudo ufw allow $serv
-        echo "$serv habilitado!" 
+
+	if [ $serv = true ]; then
+        sudo ufw allow $serv 
+        echo "$serv habilitado!"
+
+        else 
+		echo "El servicio no existe!"
+		sudo ufw allow $serv 2> errores_servicio.txt
+		cat <<EOF
+Hubo un error en el nombre o numero de servicio, intente nuevamente
+EOF
+		echo "Se ha hecho registro del error en el archivo errores_servicios.txt"
+
+	fi	
+
+
 }
 
 puertos () {
@@ -133,6 +155,7 @@ cat << EOF
   1. Dirección IP
   2. Nombre o puerto del Servicio
   3. Rango de puertos
+  4. Salir
 EOF
 	read opciones
 
@@ -146,6 +169,12 @@ EOF
 		3)
 			puertos
 			;;
+		4)      exit
+			;;
+
+		*)      echo "Elija una opción valida"
+
+
 	esac
 }
 
@@ -172,7 +201,7 @@ EOF
 	read opcion
 
 	case $opcion in
-	        1)
+	        1)  
 		    agregar_regla
 		    ;;
 		2)	
