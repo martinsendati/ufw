@@ -1,73 +1,73 @@
 #!/bin/bash
 
 
-### Crea un script de bash que verifique si UFW está instalado en el sistema. Si no lo está, instálalo ###
-
-
-# En principio lo que se quiere lograr con estos condicionales es 
-# averiguar si existe un archivo, que corresponde a la presencia del servicio ufw dentro del sistema
-# En caso de que ese archivo exista, lanzar un mensaje afirmando su existencia
+# Para empezar, lo que hace este comando es averiguar si ufw está instalado en el sistema solicitando la exist# encia de su archivo
 if [ -e /usr/sbin/ufw ]; then
-	echo "El firewall está en el sistema"
+	cat <<EOF
 
-#En el caso de que no exista, avisar que se procederá a instalar y a continuación proceder a instalar
-else 
-	echo "El firewall no está en el sistema, procediendo a instalarlo"
-       	      sudo apt-get install ufw -y
+Bienvenido! 
+
+El firewall está en el sistema!
+EOF
+
+else    
+	cat << EOF
+El firewall no está en el sistema, procediendo a instalarlo
+$(sudo apt-get install ufw -y)
+
 #Una vez instalado, procede a decir que la instalación fué un exito.
-	echo "[OK] El firewall se instaló con exito"
+	[OK] El firewall se instaló con exito
+EOF
+
 fi
 
-###  Habilita UFW y configúralo para que deniegue todo el tráfico de entrada y permita todo el tráfico de salida. ###
+cat <<EOF
 
-#Habilitando UFW
+ Habilitando firewall UFW
 
-echo "Habilitando firewall UFW"
+->  $(sudo ufw enable)
 
-sudo ufw enable
+ [OK] Firewall habilitado!
+EOF
+cat <<EOF
 
-echo "[OK] Firewall habilitado"
+ [INCOMING] Denegando tráfico entrante
 
-# Denegando el tráfico entrante
-## Estos comandos lo que haces es configurar el archivo de configuracion por default de UFW
-# /etc/default/ufw
+-> $(sudo ufw default deny incoming)
 
-echo "[INCOMING] Denegando tráfico entrante"
+ Tráfico entrante bloqueado!
+EOF
+cat << EOF 
 
-#Este comando se traduce como "denegar todo el tráfico entrante por default"
-	sudo ufw default deny incoming
+ [ALLOW] Permitiendo tráfico saliente
 
-echo "Tráfico entrante bloqueado"
+-> $(sudo ufw default allow outgoing)
 
-echo "[ALLOW] Permitiendo tráfico saliente"
+ Tráfico saliente permitido!
+EOF
 
-#Este comando se traduce como "permitir el egreso de tráfico por default"
- 	sudo ufw default allow outgoing
+### FUNCIONES ###
 
-echo "Tráfico saliente permitido"
-
-
-
-### Implementa funciones que permitan al usuario agregar y eliminar reglas en UFW. ###
-
-
+#Se solicita al usuario que agregue una direccion ip
 direccion_ip () {
 	echo "Ingrese la Dirección IP: $ip"
         read ip
-     
+#En caso de configurar la ip para algun puerto, agregarlo. De no ser asi colocar 0
 	echo "Agregar puerto: Presione 0 en el caso de no elegir puerto" $port
         read port
-
+#Entonces, si se colocó algún puerto, saldrá un comando para configurar la IP en dicho puerto, sino solo confugurar la IP
 	if [ ! $port == 0 ]; then
            echo "Habilitando Dirección IP"
 
        	   sudo ufw allow from $ip to any port $port  || sudo ufw allow from $ip
 	
 	   echo "Dirección IP habilitada"
+
+#En el caso que la IP no sea real, vuelve a ejecutar el comando que corresponda y el mensaje de error lo concatena a un archivo de texto que guardará el error generado hasta el proximo error.
    else 
            echo "La dirección IP: $ip no es valida"
 
-             sudo ufw allow from $ip to any port $port 2> errores.txt || sudo ufw allow from $ip 2> errores.txt 
+             sudo ufw allow from $ip to any port $port 2> errores_ip.txt || sudo ufw allow from $ip 2> errores_ip.txt 
 	     cat <<EOF
 Hubo un error en la dirección ip o en el puerto, intente nuevamente
 EOF
@@ -78,15 +78,18 @@ EOF
 
 }
 
+#En el caso del servicio lo mismo. Se ingresa un servicio por su nombre (SSH) o por su puerto (22)
 servicio () {
 	echo "Ingrese el nombre o numero de puerto del Servicio: $serv"
         read serv
         echo "Habilitando $serv"
 
+#Si el servicio existe, lo habilita
 	if [ $serv = true ]; then
         sudo ufw allow $serv 
         echo "$serv habilitado!"
 
+#En caso que asi no sea, concatenará el error dentro de un archivo indicando cual es. De paso se aclara que el pedido no se pudo realizar.
         else 
 		echo "El servicio no existe!"
 		sudo ufw allow $serv 2> errores_servicio.txt
@@ -110,21 +113,46 @@ EOF
         read port2
 cat <<EOF
   Elija para que protocolo:"
-  echo "1. TCP"
-  echo "2. UDP"
+  1. TCP
+  2. UDP
 EOF
 	read proto
 
 	case $proto in
 
 		1) sudo ufw allow $port:$port2/tcp	
-	          
-		   echo "Puertos habilitaods para TCP"
+if [[ $port =~ ^[0-9]+$ && $port -ge 0 && $port -le 65535 ]] && [[ $port2 =~ ^[0-9]+$ && $port2 -gt $port ]]; then
+		   
+       	echo "Puertos habilitaods para TCP"
+        else
+		   sudo ufw allow $port:$port2/tcp 2> errores_puertos_tcp.txt
+
+		   echo "No existen o no es posible configrar esos puertos!"
+
+cat <<EOF
+Hubo un error en uno o ambos puertos ingresados, intente nuevamente
+EOF
+                echo "Se ha hecho registro del error en el archivo errores_puertos_tcp.txt"
+
+	       fi
 		   ;;
 
-  		2) sudo ufw allow $port:$port2/udp
-		   
-		   echo "Puertos habilitados para UDP"
+  		2) 
+		   sudo ufw allow $port:$port2/udp
+               if [[ $port =~ ^[0-9]+$ && $port -ge 0 && $port -le 65535 ]] && [[ $port2 =~ ^[0-9]+$ && $port2 -gt $port ]]; then
+
+                   echo "Puertos habilitados para UDP"
+           else
+                   echo "No existen o no es posible configrar esos puertos!"
+
+                sudo ufw allow $port:$port2/udp 2> errores_puertos_udp.txt
+
+                cat <<EOF
+Hubo un error en uno o ambos puertos ingresados, intente nuevamente
+EOF
+                echo "Se ha hecho registro del error en el archivo errores_puertos_udp.txt"
+
+               fi
 		   ;;
 	esac
 }       
@@ -139,10 +167,10 @@ eliminar_regla () {
 	sudo ufw delete $regla
 
 	if [ $regla = true ]; then
-		echo "  Regla eliminada con exito!"
+		echo "Regla eliminada con exito!"
 	else
 
-	       echo   "  No se a encontrado la regla!"
+	       echo "No se a encontrado la regla!"
 	fi
 
 
@@ -187,6 +215,16 @@ EOF
 }
 
 
+reglas() {
+	echo " "
+	echo "Elija la regla para verla por archivo de texto"
+	echo " "
+	 cat << EOF
+	$(sudo ufw status verbose && sudo sudo ufw status verbose > reglas.txt)
+EOF
+	echo "Tambien podes ver esto en el archivo reglas.txt"
+
+}
 
 while true; do
  cat << EOF
@@ -196,7 +234,8 @@ while true; do
   1. Agregar regla
   2. Eliminar regla
   3. Reglas actuales
-  4. Salir
+  4. Lea las reglas en archivo de texto
+  5. Salir
 EOF
 	read opcion
 
@@ -211,7 +250,10 @@ EOF
 		3)  reglas_actuales
 		    ;;
 
-		4)
+		4) reglas
+		   ;;
+
+		5)
 		    echo "Hasta pronto!"
 		    exit 0
 		    ;;
